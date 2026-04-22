@@ -349,7 +349,6 @@ body { background:var(--bg); color:var(--cream); font-family:'DM Sans',sans-seri
   </div>
   <div class="topbar-right">
     <button class="icon-btn" onclick="refreshData()" title="Refresh">↺</button>
-    <button class="icon-btn" onclick="openSettings()" title="Pengaturan">⚙</button>
   </div>
 </div>
 
@@ -458,29 +457,6 @@ body { background:var(--bg); color:var(--cream); font-family:'DM Sans',sans-seri
   </div>
 </div>
 
-<!-- ═══ SETTINGS MODAL ═══ -->
-<div class="form-overlay" id="overlay-settings" onclick="handleOvClick(event,'overlay-settings')">
-  <div class="form-modal">
-    <div class="form-title">⚙ Pengaturan</div>
-    <div class="f-row">
-      <label class="f-label">URL Google Apps Script *</label>
-      <input class="f-input" id="s-gs-url" placeholder="https://script.google.com/macros/s/...">
-      <div style="font-size:.65rem;color:var(--cream2);opacity:.5;margin-top:5px;">Deploy → Web App → Anyone → Copy URL</div>
-    </div>
-    <div class="f-row">
-      <label class="f-label">Nama Keluarga</label>
-      <input class="f-input" id="s-family-name" placeholder="cth: Keluarga Besar Ahmad">
-    </div>
-    <div class="f-actions">
-      <button class="f-btn-cancel" onclick="closeOv('overlay-settings')">Batal</button>
-      <button class="f-btn-primary" onclick="saveSettings()">Simpan & Muat Ulang</button>
-    </div>
-    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:8px;">
-      <button class="f-btn-cancel" onclick="exportCSV()" style="font-size:.78rem;">⬇ Export Rekap CSV</button>
-      <button class="f-btn-cancel" onclick="clearAll()" style="font-size:.78rem;color:var(--red-l);border-color:#4a1515;">🗑 Reset Semua (lokal)</button>
-    </div>
-  </div>
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -488,13 +464,13 @@ body { background:var(--bg); color:var(--cream); font-family:'DM Sans',sans-seri
 // ═════════════════════════════════════════════════════════════
 //  CONFIG
 // ═════════════════════════════════════════════════════════════
-let GS_URL = localStorage.getItem('gs_url') || '';
+let GS_URL = 'https://script.google.com/macros/s/AKfycbxdU6LNaL8T8qiTu9uNR6W01dKPfS5OsSpuar5gdZ76THlR6rrI5W6rCvc5DVxNYMvLzw/exec';
 
 // ═════════════════════════════════════════════════════════════
 //  STATE
 // ═════════════════════════════════════════════════════════════
 let persons        = [];
-let familyName     = 'Keluarga Anda';
+let familyName     = 'KELUARGA SANG PUTU KELINGAN';
 let currentDetailId= null;
 let editingId      = null;
 let addChildOfId   = null;
@@ -509,12 +485,6 @@ async function init() {
   registerSW();
   setupOfflineDetection();
 
-  if (!GS_URL) {
-    hideLoading();
-    openSettings();
-    toast('Masukkan URL Google Apps Script terlebih dahulu', true);
-    return;
-  }
   await loadAll();
 }
 
@@ -558,17 +528,23 @@ function setupOfflineDetection() {
 async function gsGet(params) {
   const url = new URL(GS_URL);
   Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
-  const r = await fetch(url.toString());
-  return r.json();
+  const r = await fetch(url.toString(), {redirect:'follow'});
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const text = await r.text();
+  try { return JSON.parse(text); } catch { throw new Error('Response bukan JSON. Cek deploy GAS (Execute as: Me, Who can access: Anyone).'); }
 }
 
 async function gsPost(body) {
+  // GAS tidak support preflight CORS dengan Content-Type: application/json
+  // Kirim sebagai text/plain agar tidak trigger preflight, GAS tetap bisa JSON.parse
   const r = await fetch(GS_URL, {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(body)
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(body),
+    redirect:'follow'
   });
-  return r.json();
+  const text = await r.text();
+  try { return JSON.parse(text); } catch { throw new Error('Response bukan JSON. Cek deploy GAS.'); }
 }
 
 async function loadAll() {
@@ -579,7 +555,7 @@ async function loadAll() {
       gsGet({action:'getFamilyName'})
     ]);
     persons    = pRes.persons || [];
-    familyName = fnRes.familyName || 'Keluarga Anda';
+    familyName = fnRes.familyName || 'KELUARGA SANG PUTU KELINGAN';
     document.getElementById('family-name-display').textContent = familyName;
     setSyncDot('ok');
     renderTree();
@@ -964,31 +940,6 @@ function renderRekap() {
   }).join('');
 }
 
-// ═════════════════════════════════════════════════════════════
-//  SETTINGS
-// ═════════════════════════════════════════════════════════════
-function openSettings() {
-  document.getElementById('s-gs-url').value=GS_URL||'';
-  document.getElementById('s-family-name').value=familyName||'';
-  openOv('overlay-settings');
-}
-async function saveSettings() {
-  const url=document.getElementById('s-gs-url').value.trim();
-  const fn =document.getElementById('s-family-name').value.trim()||'Keluarga Anda';
-  if (!url) { toast('URL Apps Script wajib diisi!',true); return; }
-  GS_URL=url; localStorage.setItem('gs_url',url);
-  closeOv('overlay-settings');
-  if (fn!==familyName) {
-    await gsPost({action:'setFamilyName',familyName:fn}).catch(()=>{});
-    familyName=fn;
-    document.getElementById('family-name-display').textContent=fn;
-  }
-  await loadAll();
-}
-function clearAll() {
-  if(!confirm('Reset data lokal?')) return;
-  localStorage.removeItem('gs_url'); location.reload();
-}
 function exportCSV() {
   const rows=[['Nama','Kelamin','Tanggal Lahir','Wafat','Pekerjaan','Keterangan']];
   persons.forEach(p=>rows.push([p.name,p.gender==='female'?'Perempuan':'Laki-laki',p.birth||'',p.death||'',p.job||'',p.note||getAutoKet(p)||'']));

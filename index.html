@@ -464,7 +464,7 @@ body { background:var(--bg); color:var(--cream); font-family:'DM Sans',sans-seri
 // ═════════════════════════════════════════════════════════════
 //  CONFIG
 // ═════════════════════════════════════════════════════════════
-let GS_URL = 'https://script.google.com/macros/s/AKfycbxdU6LNaL8T8qiTu9uNR6W01dKPfS5OsSpuar5gdZ76THlR6rrI5W6rCvc5DVxNYMvLzw/exec';
+let GS_URL = 'https://script.google.com/macros/s/AKfycbxU8jI_lhRAStBwztWXjVKty_Lj91s_6AK6BxYscSbjmJjQIGZytHtkMsYILWzpE46LHQ/exec';
 
 // ═════════════════════════════════════════════════════════════
 //  STATE
@@ -524,28 +524,26 @@ function setupOfflineDetection() {
 
 // ═════════════════════════════════════════════════════════════
 //  API CALLS
+//  Semua pakai GET agar tidak trigger CORS preflight di GAS
 // ═════════════════════════════════════════════════════════════
-async function gsGet(params) {
+async function gsCall(params) {
   const url = new URL(GS_URL);
-  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  Object.entries(params).forEach(([k,v]) => {
+    // Kalau value berupa object/array, stringify dulu
+    url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : v);
+  });
   const r = await fetch(url.toString(), {redirect:'follow'});
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const text = await r.text();
-  try { return JSON.parse(text); } catch { throw new Error('Response bukan JSON. Cek deploy GAS (Execute as: Me, Who can access: Anyone).'); }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('Response bukan JSON. Pastikan GAS di-deploy: Execute as Me, Who has access: Anyone.\n\n' + text.slice(0,200));
+  }
 }
 
-async function gsPost(body) {
-  // GAS tidak support preflight CORS dengan Content-Type: application/json
-  // Kirim sebagai text/plain agar tidak trigger preflight, GAS tetap bisa JSON.parse
-  const r = await fetch(GS_URL, {
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify(body),
-    redirect:'follow'
-  });
-  const text = await r.text();
-  try { return JSON.parse(text); } catch { throw new Error('Response bukan JSON. Cek deploy GAS.'); }
-}
+// Alias agar kode lama tetap jalan
+async function gsGet(params)  { return gsCall(params); }
+async function gsPost(body)   { return gsCall(body); }
 
 async function loadAll() {
   setSyncDot('syncing');
@@ -592,12 +590,17 @@ async function doUploadPhoto(personName, oldPhotoId) {
   if (!pendingPhotoB64) return null;
   document.getElementById('pu-loading').style.display = 'block';
   try {
-    const res = await gsPost({
-      action: 'uploadPhoto',
-      photoBase64: pendingPhotoB64,
-      fileName: `${personName.replace(/\s+/g,'_')}_${Date.now()}.jpg`,
-      oldPhotoId: oldPhotoId || null
-    });
+    // Upload foto: kirim base64 via GET dengan chunk kecil tidak mungkin
+    // Solusi: encode ke URL-safe dan kirim via POST form (no preflight)
+    const formData = new FormData();
+    formData.append('action', 'uploadPhoto');
+    formData.append('photoBase64', pendingPhotoB64);
+    formData.append('fileName', `${personName.replace(/\s+/g,'_')}_${Date.now()}.jpg`);
+    formData.append('oldPhotoId', oldPhotoId || '');
+
+    const r = await fetch(GS_URL, { method:'POST', body: formData, redirect:'follow' });
+    const text = await r.text();
+    const res = JSON.parse(text);
     if (res.error) throw new Error(res.error);
     return { photoId: res.photoId, photoUrl: res.photoUrl };
   } finally {

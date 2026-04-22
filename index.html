@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d1f0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pohon Keluarga">
+<meta name="description" content="Aplikasi Pohon Silsilah Keluarga Digital">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<title>Pohon Keluarga</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   DESIGN SYSTEM
+═══════════════════════════════════════════════════════════ */
+:root {
+  --bg:           #0a180a;
+  --bg2:          #0f2210;
+  --bg3:          #152b15;
+  --green:        #2d6a2d;
+  --green2:       #3d8c3d;
+  --green-light:  #5cb85c;
+  --gold:         #c8a84b;
+  --gold2:        #e0c060;
+  --cream:        #f0ead8;
+  --cream2:       #c8c0a8;
+  --border:       #1e3a1e;
+  --border2:      #2a4e2a;
+  --card:         #111f11;
+  --card2:        #162816;
+  --red:          #8b2020;
+  --red-l:        #ff8888;
+  --shadow:       0 8px 32px rgba(0,0,0,0.6);
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--cream); font-family:'DM Sans',sans-serif; min-height:100dvh; overflow-x:hidden; }
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+/* ── TOP BAR ── */
+.topbar {
+  position:sticky; top:0; z-index:200;
+  background:rgba(10,24,10,0.95);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  padding:0 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  height:56px;
+}
+.topbar-title { font-family:'Cormorant Garamond',serif; font-size:1.3rem; color:var(--gold2); letter-spacing:.04em; }
+.topbar-sub { font-size:.68rem; color:var(--cream2); opacity:.6; letter-spacing:.1em; text-transform:uppercase; }
+.topbar-right { display:flex; gap:8px; }
+.icon-btn {
+  background:var(--card); border:1px solid var(--border2);
+  color:var(--gold); width:36px; height:36px; border-radius:50%;
+  cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center;
+  transition:all .2s;
+}
+.icon-btn:hover { background:var(--gold); color:var(--bg); }
+
+/* SYNC STATUS INDICATOR */
+.sync-dot {
+  width:8px; height:8px; border-radius:50%;
+  background:var(--green-light); display:inline-block;
+  margin-right:6px; animation:pulse 2s infinite;
+}
+.sync-dot.syncing { background:var(--gold2); animation:spin-dot 1s linear infinite; }
+.sync-dot.error   { background:var(--red-l); animation:none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes spin-dot { to{transform:rotate(360deg)} }
+
+/* ── TABS ── */
+.tabs {
+  display:flex; border-bottom:1px solid var(--border);
+  background:var(--bg2); position:sticky; top:56px; z-index:190;
+}
+.tab-btn {
+  flex:1; padding:12px 8px; font-family:'DM Sans',sans-serif;
+  font-size:.82rem; letter-spacing:.06em; text-transform:uppercase;
+  background:none; border:none; color:var(--cream2); cursor:pointer;
+  border-bottom:2px solid transparent; transition:all .2s;
+}
+.tab-btn.active { color:var(--gold2); border-bottom-color:var(--gold2); }
+
+/* ── PAGES ── */
+.page { display:none; padding:20px 16px 100px; }
+.page.active { display:block; }
+
+/* ── LOADING OVERLAY ── */
+.loading-screen {
+  position:fixed; inset:0; z-index:999;
+  background:var(--bg); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:16px;
+}
+.loading-tree { font-size:3rem; animation:sway 2s ease-in-out infinite; }
+@keyframes sway { 0%,100%{transform:rotate(-5deg)} 50%{transform:rotate(5deg)} }
+.loading-text { font-family:'Cormorant Garamond',serif; font-size:1.1rem; color:var(--gold2); }
+.loading-sub  { font-size:.72rem; color:var(--cream2); opacity:.5; }
+.spinner {
+  width:32px; height:32px; border:3px solid var(--border2);
+  border-top-color:var(--green-light); border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── TREE ── */
+.tree-root { display:flex; flex-direction:column; align-items:center; gap:0; }
+.couple-row { display:flex; align-items:center; justify-content:center; gap:10px; position:relative; }
+.couple-connector {
+  width:28px; height:2px;
+  background:linear-gradient(to right,var(--green),var(--gold),var(--green));
+  border-radius:2px; flex-shrink:0;
+}
+.v-line-wrap { display:flex; flex-direction:column; align-items:center; }
+.v-line { width:2px; height:28px; background:var(--border2); }
+.h-branch {
+  display:flex; align-items:flex-start; position:relative;
+  gap:12px; justify-content:center; flex-wrap:wrap;
+}
+.h-branch::before {
+  content:''; position:absolute; top:0; left:50%;
+  width:calc(100% - 40px); height:2px;
+  background:var(--border2); transform:translateX(-50%);
+}
+.branch-item { display:flex; flex-direction:column; align-items:center; position:relative; }
+.branch-item::before { content:''; width:2px; height:20px; background:var(--border2); }
+
+/* ── PERSON CARD ── */
+.person-card {
+  width:110px; background:var(--card); border:1px solid var(--border2);
+  border-radius:14px; overflow:hidden; cursor:pointer;
+  transition:transform .2s, box-shadow .2s, border-color .2s;
+  flex-shrink:0;
+}
+.person-card:hover { transform:translateY(-3px); box-shadow:var(--shadow); border-color:var(--green-light); }
+.card-photo-area {
+  width:100%; height:90px;
+  background:linear-gradient(135deg,var(--bg3),var(--card2));
+  display:flex; align-items:center; justify-content:center;
+  position:relative; overflow:hidden;
+}
+.card-photo-area img { width:100%; height:100%; object-fit:cover; }
+.card-photo-placeholder { font-size:2.2rem; opacity:.6; }
+.card-gender-dot {
+  position:absolute; top:6px; right:6px;
+  width:8px; height:8px; border-radius:50%;
+  border:1.5px solid rgba(0,0,0,.3);
+}
+.card-info { padding:7px 8px 8px; }
+.card-name {
+  font-family:'Cormorant Garamond',serif; font-size:.82rem; font-weight:600;
+  color:var(--cream); line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.card-keterangan { font-size:.62rem; color:var(--cream2); opacity:.65; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.expand-btn {
+  width:100%; padding:5px 0; background:var(--bg3); border:none;
+  border-top:1px solid var(--border); color:var(--green-light); font-size:.7rem;
+  cursor:pointer; font-family:'DM Sans',sans-serif; letter-spacing:.05em;
+  transition:background .2s; display:flex; align-items:center; justify-content:center; gap:4px;
+}
+.expand-btn:hover { background:var(--green); color:#fff; }
+.expand-btn .ei { transition:transform .25s; display:inline-block; font-style:normal; }
+.expand-btn.open .ei { transform:rotate(45deg); }
+.children-container { overflow:hidden; max-height:0; transition:max-height .4s ease; }
+.children-container.open { max-height:9999px; }
+.add-spouse-btn {
+  background:var(--card); border:1px dashed var(--border2); color:var(--green-light);
+  border-radius:14px; padding:8px 10px; cursor:pointer; font-family:'DM Sans',sans-serif;
+  transition:background .2s; display:flex; flex-direction:column; align-items:center; gap:2px;
+  font-size:.62rem;
+}
+.add-spouse-btn:hover { background:var(--bg3); }
+.add-child-btn {
+  background:none; border:1px dashed var(--border2); color:var(--green-light);
+  border-radius:20px; padding:6px 18px; font-size:.72rem; cursor:pointer;
+  margin:10px auto; display:block; font-family:'DM Sans',sans-serif;
+  letter-spacing:.04em; transition:all .2s;
+}
+.add-child-btn:hover { background:var(--bg3); border-color:var(--green-light); }
+.gen-label {
+  font-size:.62rem; text-transform:uppercase; letter-spacing:.15em;
+  color:var(--green-light); opacity:.5; margin:18px 0 8px; text-align:center;
+}
+
+/* ── DETAIL MODAL ── */
+.overlay {
+  position:fixed; inset:0; z-index:500;
+  background:rgba(0,0,0,.78); backdrop-filter:blur(6px);
+  display:flex; align-items:flex-end; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .25s;
+}
+.overlay.open { opacity:1; pointer-events:auto; }
+.modal {
+  background:var(--bg2); border:1px solid var(--border2);
+  border-radius:22px 22px 0 0; width:min(480px,100%);
+  max-height:90dvh; overflow-y:auto; padding:0 0 40px;
+  transform:translateY(40px); transition:transform .3s;
+}
+.overlay.open .modal { transform:translateY(0); }
+.modal-handle { width:40px; height:4px; background:var(--border2); border-radius:2px; margin:14px auto 0; }
+.modal-photo { width:100%; height:200px; background:linear-gradient(135deg,var(--bg3),var(--card2)); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; margin-top:12px; }
+.modal-photo img { width:100%; height:100%; object-fit:cover; }
+.modal-photo-placeholder { font-size:5rem; opacity:.4; }
+.modal-body { padding:20px 20px 0; }
+.modal-name { font-family:'Cormorant Garamond',serif; font-size:1.6rem; font-weight:700; color:var(--gold2); }
+.modal-role { font-size:.72rem; color:var(--green-light); text-transform:uppercase; letter-spacing:.12em; margin-top:2px; }
+.modal-divider { height:1px; background:var(--border); margin:16px 0; }
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.detail-item label { display:block; font-size:.62rem; text-transform:uppercase; letter-spacing:.1em; color:var(--cream2); opacity:.6; margin-bottom:3px; }
+.detail-item span { font-size:.88rem; color:var(--cream); }
+.detail-full { grid-column:1/-1; }
+.keterangan-box { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; margin-top:12px; font-size:.85rem; color:var(--cream2); line-height:1.6; font-style:italic; }
+.modal-actions { display:flex; gap:8px; margin-top:16px; }
+.modal-btn { flex:1; padding:10px; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:.82rem; cursor:pointer; transition:all .2s; border:none; }
+.mbtn-edit   { background:var(--green);  color:#fff; }
+.mbtn-edit:hover { background:var(--green2); }
+.mbtn-close  { background:var(--card);  color:var(--cream2); border:1px solid var(--border2); }
+.mbtn-delete { background:var(--red);   color:var(--red-l); border:1px solid #4a1515; }
+.mbtn-delete:hover { background:#6b1818; }
+
+/* ── FORM MODAL ── */
+.form-overlay {
+  position:fixed; inset:0; z-index:600;
+  background:rgba(0,0,0,.85); backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .25s;
+}
+.form-overlay.open { opacity:1; pointer-events:auto; }
+.form-modal {
+  background:var(--bg2); border:1px solid var(--border2);
+  border-radius:18px; width:min(420px,94vw);
+  max-height:92dvh; overflow-y:auto; padding:24px 20px 28px;
+  transform:scale(.96); transition:transform .25s;
+}
+.form-overlay.open .form-modal { transform:scale(1); }
+.form-title { font-family:'Cormorant Garamond',serif; font-size:1.3rem; color:var(--gold2); margin-bottom:18px; text-align:center; }
+.f-row { margin-bottom:13px; }
+.f-label { display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; color:var(--cream2); opacity:.7; margin-bottom:5px; }
+.f-input {
+  width:100%; background:var(--card); border:1px solid var(--border2);
+  color:var(--cream); border-radius:9px; padding:9px 12px;
+  font-family:'DM Sans',sans-serif; font-size:.88rem;
+  outline:none; transition:border .2s;
+}
+.f-input:focus { border-color:var(--green-light); }
+.f-input::placeholder { color:var(--cream2); opacity:.35; }
+.gender-row { display:flex; gap:8px; }
+.g-opt { flex:1; }
+.g-opt input { display:none; }
+.g-opt label { display:block; text-align:center; padding:8px 4px; border-radius:9px; border:1.5px solid var(--border2); cursor:pointer; font-size:.8rem; color:var(--cream2); transition:all .2s; }
+.g-opt input:checked + label { border-color:var(--green-light); background:#1e4a1e; color:var(--green-light); }
+.photo-upload-area {
+  width:100%; height:110px; background:var(--card);
+  border:2px dashed var(--border2); border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  cursor:pointer; transition:border .2s; position:relative; overflow:hidden;
+}
+.photo-upload-area:hover { border-color:var(--green-light); }
+.photo-upload-area img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:10px; }
+.photo-upload-area .pu-icon { font-size:1.6rem; position:relative; z-index:1; }
+.photo-upload-area .pu-text { font-size:.72rem; color:var(--cream2); opacity:.5; position:relative; z-index:1; }
+.uploading-badge { font-size:.7rem; color:var(--gold2); position:relative; z-index:1; }
+.f-actions { display:flex; gap:8px; margin-top:18px; }
+.f-btn-primary { flex:1; background:var(--green); color:#fff; border:none; border-radius:10px; padding:11px; font-size:.9rem; cursor:pointer; font-family:'DM Sans',sans-serif; transition:background .2s; }
+.f-btn-primary:hover { background:var(--green2); }
+.f-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+.f-btn-cancel { background:var(--card); color:var(--cream2); border:1px solid var(--border2); border-radius:10px; padding:11px 16px; font-size:.88rem; cursor:pointer; font-family:'DM Sans',sans-serif; }
+
+/* ── REKAP ── */
+.rekap-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.rekap-count { font-size:.75rem; color:var(--cream2); opacity:.6; }
+.rekap-search { width:100%; background:var(--card); border:1px solid var(--border2); color:var(--cream); border-radius:10px; padding:9px 14px; font-size:.85rem; outline:none; margin-bottom:14px; font-family:'DM Sans',sans-serif; }
+.rekap-search::placeholder { color:var(--cream2); opacity:.35; }
+.rekap-search:focus { border-color:var(--green-light); }
+.rekap-table { width:100%; border-collapse:collapse; }
+.rekap-table th { font-size:.62rem; text-transform:uppercase; letter-spacing:.1em; color:var(--cream2); opacity:.6; padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); background:var(--card); position:sticky; top:104px; }
+.rekap-table td { padding:10px 10px; font-size:.82rem; border-bottom:1px solid var(--border); vertical-align:top; }
+.rekap-table tr { cursor:pointer; transition:background .15s; }
+.rekap-table tr:hover td { background:var(--card2); }
+.rekap-photo { width:40px; height:40px; border-radius:50%; background:var(--card2); display:flex; align-items:center; justify-content:center; font-size:1.3rem; overflow:hidden; border:1.5px solid var(--border2); }
+.rekap-photo img { width:100%; height:100%; object-fit:cover; }
+.rekap-name { font-family:'Cormorant Garamond',serif; font-size:.95rem; font-weight:600; color:var(--cream); }
+.rekap-sub { font-size:.7rem; color:var(--cream2); opacity:.55; margin-top:1px; }
+.rekap-ket { font-size:.75rem; color:var(--green-light); font-style:italic; }
+.badge { display:inline-block; font-size:.6rem; padding:2px 7px; border-radius:20px; margin-top:3px; }
+.badge-m { background:#1a3a5c33; color:#4a8abf; border:1px solid #4a8abf44; }
+.badge-f { background:#5c1a3a33; color:#bf4a8a; border:1px solid #bf4a8a44; }
+
+/* ── OFFLINE BANNER ── */
+.offline-banner {
+  background:#5c2a00; color:#ffb366; font-size:.75rem;
+  text-align:center; padding:6px; display:none;
+  border-bottom:1px solid #8b4400;
+}
+.offline-banner.show { display:block; }
+
+/* ── FAB ── */
+.fab {
+  position:fixed; bottom:28px; right:20px; z-index:300;
+  background:var(--gold2); color:var(--bg);
+  width:52px; height:52px; border-radius:50%; border:none;
+  font-size:1.5rem; cursor:pointer;
+  box-shadow:0 4px 20px rgba(200,168,75,.4);
+  transition:all .2s; display:flex; align-items:center; justify-content:center;
+}
+.fab:hover { background:var(--gold); transform:scale(1.08); }
+
+/* ── TOAST ── */
+.toast {
+  position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+  background:var(--green2); color:#fff; padding:8px 20px; border-radius:30px;
+  font-size:.8rem; z-index:900; opacity:0; transition:opacity .3s;
+  pointer-events:none; white-space:nowrap;
+}
+.toast.show { opacity:1; }
+.toast.error { background:var(--red); }
+
+/* ── EMPTY STATE ── */
+.empty { text-align:center; padding:60px 20px; color:var(--cream2); opacity:.45; }
+.empty-icon { font-size:3rem; margin-bottom:12px; }
+.empty-text { font-size:.88rem; line-height:1.5; }
+</style>
+</head>
+<body>
+
+<!-- OFFLINE BANNER -->
+<div class="offline-banner" id="offline-banner">📡 Anda sedang offline — data akan disinkronkan saat koneksi kembali</div>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loading-screen">
+  <div class="loading-tree">🌿</div>
+  <div class="loading-text">Pohon Keluarga</div>
+  <div class="spinner"></div>
+  <div class="loading-sub">Memuat data dari Google Sheets...</div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">🌿 Pohon Keluarga</div>
+    <div class="topbar-sub">
+      <span class="sync-dot" id="sync-dot"></span>
+      <span id="family-name-display">Keluarga Anda</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="icon-btn" onclick="refreshData()" title="Refresh">↺</button>
+    <button class="icon-btn" onclick="openSettings()" title="Pengaturan">⚙</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('tree')">🌳 Pohon Keluarga</button>
+  <button class="tab-btn" onclick="switchTab('rekap')">📋 Rekapan</button>
+</div>
+
+<!-- PAGE: TREE -->
+<div class="page active" id="page-tree">
+  <div id="tree-root"></div>
+</div>
+
+<!-- PAGE: REKAP -->
+<div class="page" id="page-rekap">
+  <div class="rekap-header">
+    <span class="rekap-count" id="rekap-count">0 anggota</span>
+    <button class="icon-btn" onclick="exportCSV()" style="width:auto;padding:0 12px;border-radius:20px;font-size:.72rem;">⬇ CSV</button>
+  </div>
+  <input class="rekap-search" id="rekap-search" placeholder="🔍  Cari nama, pekerjaan, keterangan..." oninput="renderRekap()">
+  <table class="rekap-table">
+    <thead>
+      <tr>
+        <th style="width:44px"></th>
+        <th>Nama & Info</th>
+        <th>Tgl Lahir</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody id="rekap-tbody"></tbody>
+  </table>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openAddRoot()">＋</button>
+
+<!-- ═══ DETAIL MODAL ═══ -->
+<div class="overlay" id="overlay-detail" onclick="handleOvClick(event,'overlay-detail')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-photo" id="d-photo"><div class="modal-photo-placeholder">👤</div></div>
+    <div class="modal-body">
+      <div class="modal-name" id="d-name"></div>
+      <div class="modal-role" id="d-role"></div>
+      <div class="modal-divider"></div>
+      <div class="detail-grid" id="d-grid"></div>
+      <div class="keterangan-box" id="d-ket"></div>
+      <div class="modal-actions">
+        <button class="modal-btn mbtn-edit"   onclick="editFromDetail()">✎ Edit</button>
+        <button class="modal-btn mbtn-delete" onclick="deleteFromDetail()">🗑</button>
+        <button class="modal-btn mbtn-close"  onclick="closeOv('overlay-detail')">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FORM MODAL ═══ -->
+<div class="form-overlay" id="overlay-form" onclick="handleOvClick(event,'overlay-form')">
+  <div class="form-modal">
+    <div class="form-title" id="form-title">Tambah Anggota</div>
+
+    <div class="f-row">
+      <label class="f-label">Foto</label>
+      <div class="photo-upload-area" onclick="document.getElementById('photo-file').click()">
+        <span class="pu-icon" id="pu-icon">📷</span>
+        <span class="pu-text" id="pu-text">Ketuk untuk upload foto</span>
+        <span class="uploading-badge" id="pu-loading" style="display:none">⏳ Mengupload...</span>
+        <img id="photo-preview" style="display:none">
+      </div>
+      <input type="file" id="photo-file" style="display:none" accept="image/*" onchange="handlePhotoSelect(event)">
+    </div>
+
+    <div class="f-row">
+      <label class="f-label">Nama Lengkap *</label>
+      <input class="f-input" id="f-name" placeholder="Nama lengkap...">
+    </div>
+    <div class="f-row">
+      <label class="f-label">Jenis Kelamin</label>
+      <div class="gender-row">
+        <div class="g-opt"><input type="radio" name="fg" id="fg-m" value="male" checked><label for="fg-m">♂ Laki-laki</label></div>
+        <div class="g-opt"><input type="radio" name="fg" id="fg-f" value="female"><label for="fg-f">♀ Perempuan</label></div>
+      </div>
+    </div>
+    <div class="f-row">
+      <label class="f-label">Tanggal Lahir</label>
+      <input class="f-input" id="f-birth" type="date">
+    </div>
+    <div class="f-row">
+      <label class="f-label">Tanggal Wafat (kosongkan jika masih hidup)</label>
+      <input class="f-input" id="f-death" type="date">
+    </div>
+    <div class="f-row">
+      <label class="f-label">Pekerjaan</label>
+      <input class="f-input" id="f-job" placeholder="cth: Wiraswasta, PNS, Pelajar...">
+    </div>
+    <div class="f-row">
+      <label class="f-label">Keterangan Tambahan</label>
+      <input class="f-input" id="f-note" placeholder="Kosongkan untuk otomatis...">
+    </div>
+
+    <div class="f-actions">
+      <button class="f-btn-cancel" onclick="closeOv('overlay-form')">Batal</button>
+      <button class="f-btn-primary" id="f-save-btn" onclick="savePerson()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS MODAL ═══ -->
+<div class="form-overlay" id="overlay-settings" onclick="handleOvClick(event,'overlay-settings')">
+  <div class="form-modal">
+    <div class="form-title">⚙ Pengaturan</div>
+    <div class="f-row">
+      <label class="f-label">URL Google Apps Script *</label>
+      <input class="f-input" id="s-gs-url" placeholder="https://script.google.com/macros/s/...">
+      <div style="font-size:.65rem;color:var(--cream2);opacity:.5;margin-top:5px;">Deploy → Web App → Anyone → Copy URL</div>
+    </div>
+    <div class="f-row">
+      <label class="f-label">Nama Keluarga</label>
+      <input class="f-input" id="s-family-name" placeholder="cth: Keluarga Besar Ahmad">
+    </div>
+    <div class="f-actions">
+      <button class="f-btn-cancel" onclick="closeOv('overlay-settings')">Batal</button>
+      <button class="f-btn-primary" onclick="saveSettings()">Simpan & Muat Ulang</button>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:8px;">
+      <button class="f-btn-cancel" onclick="exportCSV()" style="font-size:.78rem;">⬇ Export Rekap CSV</button>
+      <button class="f-btn-cancel" onclick="clearAll()" style="font-size:.78rem;color:var(--red-l);border-color:#4a1515;">🗑 Reset Semua (lokal)</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═════════════════════════════════════════════════════════════
+//  CONFIG
+// ═════════════════════════════════════════════════════════════
+let GS_URL = localStorage.getItem('gs_url') || '';
+
+// ═════════════════════════════════════════════════════════════
+//  STATE
+// ═════════════════════════════════════════════════════════════
+let persons        = [];
+let familyName     = 'Keluarga Anda';
+let currentDetailId= null;
+let editingId      = null;
+let addChildOfId   = null;
+let addSpouseOfId  = null;
+let pendingPhotoB64= null;  // base64 foto yang belum diupload
+let pendingPhotoOldId = null;
+
+// ═════════════════════════════════════════════════════════════
+//  INIT
+// ═════════════════════════════════════════════════════════════
+async function init() {
+  registerSW();
+  setupOfflineDetection();
+
+  if (!GS_URL) {
+    hideLoading();
+    openSettings();
+    toast('Masukkan URL Google Apps Script terlebih dahulu', true);
+    return;
+  }
+  await loadAll();
+}
+
+function registerSW() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              toast('Update tersedia — refresh untuk memperbarui');
+            }
+          });
+        });
+      })
+      .catch(e => console.warn('[SW] Register failed', e));
+
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'SYNC_TRIGGERED') loadAll();
+    });
+  }
+}
+
+function setupOfflineDetection() {
+  const banner = document.getElementById('offline-banner');
+  window.addEventListener('offline', () => {
+    banner.classList.add('show');
+    setSyncDot('error');
+  });
+  window.addEventListener('online', () => {
+    banner.classList.remove('show');
+    loadAll();
+  });
+  if (!navigator.onLine) banner.classList.add('show');
+}
+
+// ═════════════════════════════════════════════════════════════
+//  API CALLS
+// ═════════════════════════════════════════════════════════════
+async function gsGet(params) {
+  const url = new URL(GS_URL);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const r = await fetch(url.toString());
+  return r.json();
+}
+
+async function gsPost(body) {
+  const r = await fetch(GS_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  return r.json();
+}
+
+async function loadAll() {
+  setSyncDot('syncing');
+  try {
+    const [pRes, fnRes] = await Promise.all([
+      gsGet({action:'getAll'}),
+      gsGet({action:'getFamilyName'})
+    ]);
+    persons    = pRes.persons || [];
+    familyName = fnRes.familyName || 'Keluarga Anda';
+    document.getElementById('family-name-display').textContent = familyName;
+    setSyncDot('ok');
+    renderTree();
+    renderRekap();
+  } catch(e) {
+    setSyncDot('error');
+    toast('Gagal memuat data: ' + e.message, true);
+  }
+  hideLoading();
+}
+
+async function refreshData() {
+  document.getElementById('loading-screen').style.display = 'flex';
+  await loadAll();
+}
+
+// ═════════════════════════════════════════════════════════════
+//  PHOTO UPLOAD
+// ═════════════════════════════════════════════════════════════
+function handlePhotoSelect(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingPhotoB64 = ev.target.result;
+    document.getElementById('photo-preview').src = pendingPhotoB64;
+    document.getElementById('photo-preview').style.display = 'block';
+    document.getElementById('pu-icon').style.display = 'none';
+    document.getElementById('pu-text').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function doUploadPhoto(personName, oldPhotoId) {
+  if (!pendingPhotoB64) return null;
+  document.getElementById('pu-loading').style.display = 'block';
+  try {
+    const res = await gsPost({
+      action: 'uploadPhoto',
+      photoBase64: pendingPhotoB64,
+      fileName: `${personName.replace(/\s+/g,'_')}_${Date.now()}.jpg`,
+      oldPhotoId: oldPhotoId || null
+    });
+    if (res.error) throw new Error(res.error);
+    return { photoId: res.photoId, photoUrl: res.photoUrl };
+  } finally {
+    document.getElementById('pu-loading').style.display = 'none';
+  }
+}
+
+// ═════════════════════════════════════════════════════════════
+//  CRUD
+// ═════════════════════════════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+
+async function savePerson() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { toast('Nama tidak boleh kosong!', true); return; }
+
+  const saveBtn = document.getElementById('f-save-btn');
+  saveBtn.disabled = true; saveBtn.textContent = '⏳ Menyimpan...';
+
+  try {
+    const gender = document.querySelector('input[name="fg"]:checked').value;
+    const birth  = document.getElementById('f-birth').value;
+    const death  = document.getElementById('f-death').value;
+    const job    = document.getElementById('f-job').value.trim();
+    const note   = document.getElementById('f-note').value.trim();
+
+    let person;
+    if (editingId) {
+      person = persons.find(p=>p.id===editingId);
+    } else {
+      person = { id:uid(), parentIds:[], spouseId:null, photoId:null, photoUrl:null };
+    }
+
+    // Upload foto kalau ada baru
+    if (pendingPhotoB64) {
+      const photoRes = await doUploadPhoto(name, person.photoId);
+      if (photoRes) {
+        person.photoId  = photoRes.photoId;
+        person.photoUrl = photoRes.photoUrl;
+      }
+    }
+
+    Object.assign(person, {name,gender,birth,death,job,note});
+
+    if (!editingId) {
+      if (addChildOfId) {
+        person.parentIds = [addChildOfId];
+        const parent = persons.find(p=>p.id===addChildOfId);
+        if (parent?.spouseId) person.parentIds.push(parent.spouseId);
+      }
+      if (addSpouseOfId) {
+        person.spouseId = addSpouseOfId;
+        const sp = persons.find(p=>p.id===addSpouseOfId);
+        if (sp) {
+          sp.spouseId = person.id;
+          await gsPost({action:'save', person:sp}); // update pasangan
+        }
+      }
+      persons.push(person);
+    }
+
+    const res = await gsPost({action:'save', person});
+    if (res.error) throw new Error(res.error);
+
+    closeOv('overlay-form');
+    renderTree(); renderRekap();
+    toast('Tersimpan di Google Sheets ✓');
+  } catch(e) {
+    toast('Gagal simpan: ' + e.message, true);
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = '💾 Simpan';
+  }
+}
+
+async function deletePerson(id) {
+  if (!confirm('Hapus anggota ini?')) return;
+  const p = persons.find(q=>q.id===id);
+
+  // lepas relasi pasangan
+  if (p?.spouseId) {
+    const sp = persons.find(q=>q.id===p.spouseId);
+    if (sp) { sp.spouseId = null; await gsPost({action:'save',person:sp}); }
+  }
+
+  await gsPost({action:'delete', id});
+  persons = persons.filter(q=>q.id!==id);
+  persons.forEach(q => {
+    if (q.parentIds) q.parentIds = q.parentIds.filter(x=>x!==id);
+    if (q.spouseId===id) q.spouseId=null;
+  });
+  closeOv('overlay-detail');
+  renderTree(); renderRekap();
+  toast('Dihapus');
+}
+
+// ═════════════════════════════════════════════════════════════
+//  FORM HELPERS
+// ═════════════════════════════════════════════════════════════
+function openAddRoot() {
+  editingId=null; addChildOfId=null; addSpouseOfId=null;
+  resetForm();
+  document.getElementById('form-title').textContent='＋ Tambah Anggota';
+  openOv('overlay-form');
+}
+function openAddChild(parentId, spouseId) {
+  editingId=null; addChildOfId=parentId; addSpouseOfId=null;
+  resetForm();
+  const par = persons.find(p=>p.id===parentId);
+  const sp  = spouseId ? persons.find(p=>p.id===spouseId) : null;
+  document.getElementById('form-title').textContent =
+    sp ? `＋ Anak dari ${firstName(par)} & ${firstName(sp)}`
+       : `＋ Anak dari ${par?.name||''}`;
+  openOv('overlay-form');
+}
+function openAddSpouse(personId) {
+  editingId=null; addChildOfId=null; addSpouseOfId=personId;
+  resetForm();
+  const p = persons.find(q=>q.id===personId);
+  document.getElementById('form-title').textContent = `＋ Pasangan ${p?.name||''}`;
+  if (p?.gender==='male') document.getElementById('fg-f').checked=true;
+  openOv('overlay-form');
+}
+function editFromDetail() {
+  closeOv('overlay-detail');
+  const p = persons.find(q=>q.id===currentDetailId);
+  editingId=currentDetailId; addChildOfId=null; addSpouseOfId=null;
+  resetForm();
+  document.getElementById('form-title').textContent='✎ Edit Anggota';
+  document.getElementById('f-name').value  = p.name||'';
+  document.getElementById('f-birth').value = p.birth||'';
+  document.getElementById('f-death').value = p.death||'';
+  document.getElementById('f-job').value   = p.job||'';
+  document.getElementById('f-note').value  = p.note||'';
+  document.querySelector(`input[name="fg"][value="${p.gender||'male'}"]`).checked=true;
+  if (p.photoUrl) {
+    document.getElementById('photo-preview').src=p.photoUrl;
+    document.getElementById('photo-preview').style.display='block';
+    document.getElementById('pu-icon').style.display='none';
+    document.getElementById('pu-text').style.display='none';
+  }
+  openOv('overlay-form');
+}
+function deleteFromDetail() { deletePerson(currentDetailId); }
+
+function resetForm() {
+  ['f-name','f-birth','f-death','f-job','f-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fg-m').checked=true;
+  pendingPhotoB64=null; pendingPhotoOldId=null;
+  document.getElementById('photo-preview').style.display='none';
+  document.getElementById('photo-preview').src='';
+  document.getElementById('pu-icon').style.display='block';
+  document.getElementById('pu-text').style.display='block';
+  document.getElementById('photo-file').value='';
+}
+
+// ═════════════════════════════════════════════════════════════
+//  AUTO KETERANGAN
+// ═════════════════════════════════════════════════════════════
+function getAutoKet(person) {
+  if (!person.parentIds || !person.parentIds.length) return '';
+  const parents = person.parentIds.map(pid=>persons.find(p=>p.id===pid)).filter(Boolean);
+  if (!parents.length) return '';
+  const siblings = persons.filter(p=>p.id!==person.id&&p.parentIds&&p.parentIds.some(pid=>person.parentIds.includes(pid)));
+  const family = [person,...siblings].sort((a,b)=>{
+    if(!a.birth&&!b.birth) return 0; if(!a.birth) return 1; if(!b.birth) return -1;
+    return new Date(a.birth)-new Date(b.birth);
+  });
+  const rank = family.findIndex(p=>p.id===person.id)+1;
+  const ords = ['Pertama','Kedua','Ketiga','Keempat','Kelima','Keenam','Ketujuh','Kedelapan','Kesembilan','Kesepuluh'];
+  const ord  = ords[rank-1]||`ke-${rank}`;
+  return `Anak ${ord} dari ${parents.map(p=>firstName(p)).join(' + ')}`;
+}
+function firstName(p) { return p?.name?.split(' ')[0]||''; }
+
+// ═════════════════════════════════════════════════════════════
+//  TREE RENDER
+// ═════════════════════════════════════════════════════════════
+function getRoots() { return persons.filter(p=>!p.parentIds||!p.parentIds.length); }
+function getChildren(id) { return persons.filter(p=>p.parentIds&&p.parentIds.includes(id)); }
+function getSpouse(p) { return p.spouseId?persons.find(q=>q.id===p.spouseId)||null:null; }
+
+function renderTree() {
+  const root = document.getElementById('tree-root');
+  root.innerHTML='';
+  const roots = getRoots();
+  if (!roots.length) {
+    root.innerHTML=`<div class="empty"><div class="empty-icon">🌱</div><div class="empty-text">Belum ada anggota keluarga.<br>Ketuk <strong>＋</strong> untuk mulai dari Ayah.</div></div>`;
+    return;
+  }
+  const done = new Set();
+  roots.forEach(p=>{
+    if (done.has(p.id)) return;
+    done.add(p.id);
+    const sp = getSpouse(p);
+    if (sp) done.add(sp.id);
+    root.appendChild(buildFamilyUnit(p, sp, 0));
+  });
+}
+
+function buildFamilyUnit(person, spouse, depth) {
+  const wrap = el('div','',{style:'display:flex;flex-direction:column;align-items:center;'});
+  if (depth===0) wrap.appendChild(el('div','gen-label',{},'Generasi Utama'));
+
+  // couple row
+  const row = el('div','couple-row');
+  row.appendChild(makeCard(person));
+  if (spouse) {
+    row.appendChild(el('div','couple-connector'));
+    row.appendChild(makeCard(spouse));
+  } else {
+    const addSp = el('button','add-spouse-btn');
+    addSp.innerHTML=`<span style="font-size:1.1rem">👫</span>Pasangan`;
+    addSp.onclick=()=>openAddSpouse(person.id);
+    row.appendChild(addSp);
+  }
+  wrap.appendChild(row);
+
+  // children
+  let children = getChildren(person.id);
+  if (spouse) {
+    const sc = getChildren(spouse.id).filter(c=>!children.find(x=>x.id===c.id));
+    children = [...children,...sc];
+  }
+  const seen=new Set(); children=children.filter(c=>{if(seen.has(c.id))return false;seen.add(c.id);return true;});
+
+  const expId=`exp-${person.id}`, chId=`ch-${person.id}`;
+  const expBtn = el('button','expand-btn'+(depth<1&&children.length?' open':''));
+  expBtn.id=expId; expBtn.style.width='110px';
+  setExpBtn(expBtn, children.length, depth<1&&children.length>0);
+  expBtn.onclick=()=>{
+    const chDiv=document.getElementById(chId);
+    const isOpen=chDiv.classList.contains('open');
+    chDiv.classList.toggle('open',!isOpen);
+    expBtn.classList.toggle('open',!isOpen);
+    setExpBtn(expBtn, getChildren(person.id).length, !isOpen);
+  };
+  wrap.appendChild(expBtn);
+
+  const chDiv = el('div','children-container'+(depth<1&&children.length?' open':''));
+  chDiv.id=chId;
+  const vw=el('div','v-line-wrap'); vw.appendChild(el('div','v-line')); chDiv.appendChild(vw);
+
+  if (children.length) {
+    const gl=el('div','gen-label',{},'Anak-anak'+(spouse?` ${firstName(person)} + ${firstName(spouse)}`:''));
+    chDiv.appendChild(gl);
+    const branch=el('div','h-branch');
+    children.forEach(child=>{
+      const bi=el('div','branch-item');
+      bi.appendChild(buildFamilyUnit(child, getSpouse(child), depth+1));
+      branch.appendChild(bi);
+    });
+    chDiv.appendChild(branch);
+  }
+
+  const addChBtn=el('button','add-child-btn',{},`＋ Tambah Anak`);
+  addChBtn.onclick=()=>openAddChild(person.id, spouse?.id);
+  chDiv.appendChild(addChBtn);
+  wrap.appendChild(chDiv);
+  return wrap;
+}
+
+function setExpBtn(btn, count, isOpen) {
+  btn.innerHTML=count>0?`<i class="ei">${isOpen?'✕':'＋'}</i> ${count} Anak`:`<span>＋ Anak</span>`;
+  btn.style.opacity=count>0?'1':'0.45';
+}
+
+function makeCard(person) {
+  const card=el('div','person-card');
+  const pa=el('div','card-photo-area');
+  if (person.photoUrl) {
+    const img=document.createElement('img'); img.src=person.photoUrl; img.alt=person.name;
+    pa.appendChild(img);
+  } else {
+    pa.appendChild(el('div','card-photo-placeholder',{},person.gender==='female'?'👩':'👨'));
+  }
+  const dot=el('div','card-gender-dot');
+  dot.style.background=person.gender==='female'?'#bf4a8a':'#4a8abf';
+  pa.appendChild(dot);
+  const info=el('div','card-info');
+  info.appendChild(el('div','card-name',{},person.name));
+  info.appendChild(el('div','card-keterangan',{},person.job||getAutoKet(person)||''));
+  card.appendChild(pa); card.appendChild(info);
+  card.onclick=()=>showDetail(person.id);
+  return card;
+}
+
+// ═════════════════════════════════════════════════════════════
+//  DETAIL
+// ═════════════════════════════════════════════════════════════
+function showDetail(id) {
+  const p=persons.find(q=>q.id===id); if(!p) return;
+  currentDetailId=id;
+  const dph=document.getElementById('d-photo');
+  dph.innerHTML=p.photoUrl?`<img src="${p.photoUrl}" alt="${p.name}">`:`<div class="modal-photo-placeholder">${p.gender==='female'?'👩':'👨'}</div>`;
+  document.getElementById('d-name').textContent=p.name;
+  const parents  = (p.parentIds||[]).map(pid=>persons.find(q=>q.id===pid)).filter(Boolean);
+  const children = getChildren(id);
+  const spouse   = getSpouse(p);
+  const autoKet  = getAutoKet(p);
+  document.getElementById('d-role').textContent=autoKet||(p.job||'')|| (p.gender==='female'?'♀ Perempuan':'♂ Laki-laki');
+  const fmt=d=>{if(!d)return'–';const dt=new Date(d);return dt.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});};
+  const usia=birth=>{if(!birth)return null;const yr=Math.floor((new Date()-new Date(birth))/31557600000);return yr>0?yr+' tahun':null;};
+  document.getElementById('d-grid').innerHTML=`
+    <div class="detail-item"><label>Kelamin</label><span>${p.gender==='female'?'♀ Perempuan':'♂ Laki-laki'}</span></div>
+    <div class="detail-item"><label>Pekerjaan</label><span>${p.job||'–'}</span></div>
+    <div class="detail-item"><label>Tanggal Lahir</label><span>${fmt(p.birth)}</span></div>
+    <div class="detail-item"><label>Usia</label><span>${usia(p.birth)||'–'}</span></div>
+    ${p.death?`<div class="detail-item"><label>Wafat</label><span>${fmt(p.death)}</span></div>`:''}
+    ${spouse?`<div class="detail-item"><label>Pasangan</label><span>${spouse.name}</span></div>`:''}
+    ${parents.length?`<div class="detail-item detail-full"><label>Orang Tua</label><span>${parents.map(p=>p.name).join(' & ')}</span></div>`:''}
+    ${children.length?`<div class="detail-item detail-full"><label>Anak-anak (${children.length})</label><span>${children.map(c=>c.name).join(', ')}</span></div>`:''}
+  `;
+  const ket=document.getElementById('d-ket');
+  const finalKet=p.note||autoKet;
+  ket.textContent=finalKet||'Tidak ada keterangan tambahan.';
+  ket.style.display=finalKet?'block':'none';
+  openOv('overlay-detail');
+}
+
+// ═════════════════════════════════════════════════════════════
+//  REKAP
+// ═════════════════════════════════════════════════════════════
+function renderRekap() {
+  const q=(document.getElementById('rekap-search')?.value||'').toLowerCase();
+  let list=[...persons];
+  if(q) list=list.filter(p=>(p.name||'').toLowerCase().includes(q)||(p.job||'').toLowerCase().includes(q)||(getAutoKet(p)||'').toLowerCase().includes(q));
+  document.getElementById('rekap-count').textContent=`${list.length} anggota`;
+  const tbody=document.getElementById('rekap-tbody');
+  if(!tbody) return;
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--cream2);opacity:.4;">Tidak ada data</td></tr>`;return;}
+  const fmt=d=>{if(!d)return'–';const dt=new Date(d);return dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});};
+  tbody.innerHTML=list.map(p=>{
+    const ket=p.note||getAutoKet(p)||'–';
+    return `<tr onclick="showDetail('${p.id}')">
+      <td><div class="rekap-photo">${p.photoUrl?`<img src="${p.photoUrl}">`:(p.gender==='female'?'👩':'👨')}</div></td>
+      <td><div class="rekap-name">${p.name}</div><div class="rekap-sub">${p.job||'–'}</div><span class="badge ${p.gender==='female'?'badge-f':'badge-m'}">${p.gender==='female'?'♀':'♂'}</span></td>
+      <td style="white-space:nowrap;font-size:.8rem;">${fmt(p.birth)}${p.death?`<br><span style="opacity:.5;font-size:.7rem;">†${fmt(p.death)}</span>`:''}</td>
+      <td><div class="rekap-ket">${ket}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═════════════════════════════════════════════════════════════
+//  SETTINGS
+// ═════════════════════════════════════════════════════════════
+function openSettings() {
+  document.getElementById('s-gs-url').value=GS_URL||'';
+  document.getElementById('s-family-name').value=familyName||'';
+  openOv('overlay-settings');
+}
+async function saveSettings() {
+  const url=document.getElementById('s-gs-url').value.trim();
+  const fn =document.getElementById('s-family-name').value.trim()||'Keluarga Anda';
+  if (!url) { toast('URL Apps Script wajib diisi!',true); return; }
+  GS_URL=url; localStorage.setItem('gs_url',url);
+  closeOv('overlay-settings');
+  if (fn!==familyName) {
+    await gsPost({action:'setFamilyName',familyName:fn}).catch(()=>{});
+    familyName=fn;
+    document.getElementById('family-name-display').textContent=fn;
+  }
+  await loadAll();
+}
+function clearAll() {
+  if(!confirm('Reset data lokal?')) return;
+  localStorage.removeItem('gs_url'); location.reload();
+}
+function exportCSV() {
+  const rows=[['Nama','Kelamin','Tanggal Lahir','Wafat','Pekerjaan','Keterangan']];
+  persons.forEach(p=>rows.push([p.name,p.gender==='female'?'Perempuan':'Laki-laki',p.birth||'',p.death||'',p.job||'',p.note||getAutoKet(p)||'']));
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`rekap-${Date.now()}.csv`;a.click();
+}
+
+// ═════════════════════════════════════════════════════════════
+//  UTILS
+// ═════════════════════════════════════════════════════════════
+function el(tag,cls,attrs={},text) {
+  const e=document.createElement(tag);
+  if(cls) e.className=cls;
+  Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+  if(text!==undefined) e.textContent=text;
+  return e;
+}
+function switchTab(t) {
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&t==='tree')||(i===1&&t==='rekap')));
+  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',(i===0&&t==='tree')||(i===1&&t==='rekap')));
+  if(t==='rekap') renderRekap();
+}
+function openOv(id)  { document.getElementById(id).classList.add('open'); }
+function closeOv(id) { document.getElementById(id).classList.remove('open'); }
+function handleOvClick(e,id) { if(e.target.id===id) closeOv(id); }
+function hideLoading() { document.getElementById('loading-screen').style.display='none'; }
+function setSyncDot(state) {
+  const d=document.getElementById('sync-dot');
+  d.className='sync-dot';
+  if(state==='syncing') d.classList.add('syncing');
+  if(state==='error')   d.classList.add('error');
+}
+let toastTimer;
+function toast(msg,isError=false) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show'+(isError?' error':'');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.className='toast',2800);
+}
+
+// ── START ──
+init();
+</script>
+</body>
+</html>
